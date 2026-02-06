@@ -1,0 +1,12 @@
+[project]
+name = "cgpe"
+version = "0.1.0"
+description = description = "Async data scraping and processing pipelines for collectible price data"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "aiohttp>=3.13.3",
+    "bs4>=0.0.2",
+    "fastapi[standard]>=0.128.1",
+    "requests>=2.32.5",
+]
