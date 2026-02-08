@@ -2,11 +2,13 @@
 
 from cgpe.scrape.sources.base import SourceConfig
 from cgpe.logging.logger import setup_logger
+from cgpe.scrape.index.pokemon_sets import set_links_to_scrape
 
 log = setup_logger(__name__)
 
 POKEMON_PRICECHARTING = SourceConfig(
     source="Pokemon PriceCharting",
     category_link="https://www.pricecharting.com/category/pokemon-cards",
-    base_url="https://www.pricecharting.com"
+    base_url="https://www.pricecharting.com",
+    sets_to_scrape=set_links_to_scrape
 )
