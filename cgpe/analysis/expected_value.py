@@ -43,7 +43,7 @@ def expected_value_from_population_and_prices(
     for pop, price in zip(population, prices):
         pop_f = float(pop)
 
-        if drop_nonpositive_population and pop_f <= 0:
+        if (drop_nonpositive_population and pop_f <= 0) or price is None:
             skipped += 1
             continue
 
@@ -69,9 +69,7 @@ def expected_value_from_population_and_prices(
 
     if total_pop <= 0:
         log.error("Total population is zero after filtering")
-        raise ValueError(
-            "total population is 0 after filtering; cannot compute expected value"
-        )
+        return 0
 
     ev = weighted_sum / total_pop
 
