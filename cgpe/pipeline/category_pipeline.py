@@ -11,10 +11,10 @@ log = setup_logger(__name__)
 
 
 async def run_category_pipeline(
-    session: aiohttp.ClientSession,
-    source_config: SourceConfig,
-    headers: dict,
-) -> CategoryPage:
+        session: aiohttp.ClientSession,
+        source_config: SourceConfig
+    ) -> CategoryPage:
+    
     log.info("Starting category pipeline")
 
     log.debug(
@@ -24,8 +24,7 @@ async def run_category_pipeline(
 
     html = await fetch_html(
         session,
-        url=source_config.category_link,
-        headers=headers,
+        url=source_config.category_link
     )
 
     log.debug(

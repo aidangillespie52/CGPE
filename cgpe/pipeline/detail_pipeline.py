@@ -12,20 +12,18 @@ log = setup_logger(__name__)
 
 
 async def run_detail_pipeline(
-    session: aiohttp.ClientSession,
-    config: SourceConfig,
-    detail_link: str,
-    headers: dict,
-) -> Detail:
-    log.info("Starting detail pipeline")
+        session: aiohttp.ClientSession,
+        config: SourceConfig,
+        detail_link: str
+    ) -> Detail:
 
+    log.info("Starting detail pipeline")
     log.debug("Fetching detail page: %s", detail_link)
 
     try:
         html = await fetch_html(
             session,
-            url=detail_link,
-            headers=headers,
+            url=detail_link
         )
 
         log.debug(
