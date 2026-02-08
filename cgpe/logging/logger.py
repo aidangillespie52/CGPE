@@ -21,7 +21,7 @@ def setup_logger(
         return logger  # prevent duplicate handlers
 
     formatter = logging.Formatter(
-        "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+        "%(asctime)s |  %(levelname)s  | %(name)s | %(message)s"
     )
 
     # ---- console ----
