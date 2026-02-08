@@ -10,3 +10,4 @@ class SourceConfig:
     source: str
     category_link: str
     base_url: str
+    sets_to_scrape: list[str]
