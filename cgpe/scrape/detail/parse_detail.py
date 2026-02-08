@@ -160,6 +160,9 @@ def extract_ebay_tables(soup: BeautifulSoup):
             price = float(price)
             prices.append(price)
 
+        if len(prices) < 2:
+            return (None, None)
+        
         mean = sum(prices) / len(prices)
         stddev = (sum([(x - mean) ** 2 for x in prices]) / (len(prices)-1)) ** 0.5
 
