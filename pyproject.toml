@@ -6,7 +6,11 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "aiohttp>=3.13.3",
+    "browserforge>=1.2.4",
     "bs4>=0.0.2",
     "fastapi[standard]>=0.128.1",
     "requests>=2.32.5",
 ]
+
+[project.scripts]
+cgpe-profit = "cgpe.cli.set_profit:main"
