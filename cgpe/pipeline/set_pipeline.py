@@ -1,50 +1,64 @@
 # cgpe/pipeline/set_pipeline.py
 
+import aiohttp
+from typing import List
+import json
+
 from cgpe.scrape.sources.base import SourceConfig
-from cgpe.http.client import fetch_html
-from cgpe.scrape.set.parse_set import SetPage, parse_set_page
 from cgpe.logging.logger import setup_logger
+from cgpe.config.scraper import ScraperConfig
+from cgpe.scrape.set.fetch_set import fetch_set_json_pages
+from cgpe.scrape.set.parse_set import parse_set_data
+from cgpe.http.header_rotator import HeaderRotator
 
 log = setup_logger(__name__)
+scraper_config = ScraperConfig()
+
+async def fetch_json(
+    session: aiohttp.ClientSession,
+    url: str,
+    headers: dict,
+    params: dict,
+) -> List[dict]:
+    async with session.get(url, headers=headers, params=params) as resp:
+        resp.raise_for_status()
+        return await resp.json()
 
 
 async def run_set_pipeline(
-    session,
-    set_url: str,
-    source_config: SourceConfig,
-    headers: dict,
-) -> SetPage:
-    log.info("Starting set pipeline")
+        session: aiohttp.ClientSession,
+        set_url: str,
+        source_config: SourceConfig
+    ) -> List[dict]:
 
-    log.debug("Fetching set page: %s", set_url)
+    data = await fetch_set_json_pages(
+        session = session,
+        set_url = set_url
+    )
 
-    try:
-        html = await fetch_html(
-            session,
-            url=set_url,
-            headers=headers,
+    return parse_set_data(
+        data=data,
+        set_link=set_url,
+        source_config=source_config,
+    )
+
+async def example():
+    headers_rotator = HeaderRotator()
+    from cgpe.scrape.sources.pokemon import POKEMON_PRICECHARTING
+
+    async with aiohttp.ClientSession() as session:
+        source_config = POKEMON_PRICECHARTING
+        set_url = "https://www.pricecharting.com/console/pokemon-black-bolt"
+
+        result = await run_set_pipeline(
+            session=session,
+            set_url=set_url,
+            source_config=source_config
         )
 
-        log.debug(
-            "Fetched set HTML (%d characters) for %s",
-            len(html),
-            set_url,
-        )
+        print(len(result.detail_links))
 
-        set_page = parse_set_page(
-            html=html,
-            set_link=set_url,
-            source_config=source_config,
-        )
-
-        log.info(
-            "Parsed set page successfully: %s (%d detail links)",
-            set_url,
-            len(set_page.detail_links),
-        )
-
-        return set_page
-
-    except Exception:
-        log.exception("Set pipeline failed for %s", set_url)
-        raise
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(example())
+        
