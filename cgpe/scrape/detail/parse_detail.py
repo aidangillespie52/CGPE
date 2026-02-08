@@ -1,13 +1,14 @@
 # cgpe/scrape/detail/parse_detail.py
 
 from dataclasses import dataclass
-from typing import Optional, Dict, List, Tuple
+from typing import Optional, Dict, List, Tuple, Any
 import json
 import re
 from pprint import pformat
 from bs4 import BeautifulSoup
 
 from cgpe.scrape.sources.base import SourceConfig
+from cgpe.utils.time import utc_now_iso
 from cgpe.logging.logger import setup_logger
 
 log = setup_logger(__name__)
@@ -54,7 +55,32 @@ class Detail:
             ")"
         )
 
+    def to_db_row(self) -> Dict[str, Any]:
+        source = getattr(self.source_config, "source", None)
 
+        return {
+            "card_link": self.card_link,
+            "card_name": self.card_name,
+            "card_num": self.card_num,
+            "source": source,
+            "ungraded_price": self.ungraded_price,
+
+            "grade7_mean": self.grade7_dist[0],
+            "grade7_std": self.grade7_dist[1],
+            "grade8_mean": self.grade8_dist[0],
+            "grade8_std": self.grade8_dist[1],
+            "grade9_mean": self.grade9_dist[0],
+            "grade9_std": self.grade9_dist[1],
+            "grade10_mean": self.grade10_dist[0],
+            "grade10_std": self.grade10_dist[1],
+
+            "pop_json": json.dumps(self.pop) if self.pop is not None else None,
+            "graded_prices_json": json.dumps(self.graded_prices_by_grade),
+            "grades_1_to_10_json": json.dumps(self.grades_1_to_10),
+
+            "scraped_at": utc_now_iso(),
+        }
+    
 # -----------------------------
 # Normalization helpers
 # -----------------------------
