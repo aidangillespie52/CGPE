@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import List
 from pprint import pformat
 from bs4 import BeautifulSoup
+from urllib.parse import urljoin
 
 from cgpe.scrape.sources.base import SourceConfig
 from cgpe.logging.logger import setup_logger
@@ -14,25 +15,8 @@ log = setup_logger(__name__)
 @dataclass
 class SetPage:
     set_link: str
-    set_name: str
     detail_links: List[str]
     source_config: SourceConfig
-
-    def __repr__(self) -> str:
-        src = getattr(self.source_config, "source", None)
-
-        # tune these to taste
-        links_s = pformat(self.detail_links, width=88, compact=False)
-
-        return (
-            "SetPage(\n"
-            f"  set_link={self.set_link!r},\n"
-            f"  set_name={self.set_name!r},\n"
-            f"  source={src!r},\n"
-            f"  detail_links={len(self.detail_links)} links,\n"
-            f"  detail_links_preview={links_s[:180]!r},\n"
-            ")"
-        )
 
 
 # -----------------------------
@@ -102,28 +86,26 @@ def extract_detail_links(soup: BeautifulSoup) -> List[str]:
 # Composition / "public API"
 # -----------------------------
 
-def parse_set_page(
-    html: str,
+def parse_set_data(
+    data: List[List[dict]],
     set_link: str,
     source_config: SourceConfig,
 ) -> SetPage:
     log.info("Parsing set page: %s", set_link)
-    log.debug("Set HTML size: %d characters", len(html))
+    log.debug("Set JSON size: %d records", len(data))
 
-    soup = BeautifulSoup(html, "html.parser")
-
-    set_name = extract_set_name(soup)
-    detail_links = extract_detail_links(soup)
-
-    log.info(
-        "Parsed set page successfully: %s (%d detail links)",
-        set_name,
-        len(detail_links),
-    )
+    detail_links: List[str] = []
+    for obj in data:
+        detail_link = urljoin(set_link + "/", obj.get("productUri", ""))
+        if detail_link == set_link:
+            log.debug("Skipping record with empty productUri")
+            continue
+        
+        detail_link = detail_link.replace("/console/", "/game/")
+        detail_links.append(detail_link)
 
     return SetPage(
         set_link=set_link,
-        set_name=set_name,
         detail_links=detail_links,
         source_config=source_config,
     )
