@@ -13,7 +13,7 @@ log = setup_logger(__name__)
 
 async def run_detail_pipeline(
         session: aiohttp.ClientSession,
-        config: SourceConfig,
+        source_config: SourceConfig,
         detail_link: str
     ) -> Detail:
 
@@ -35,7 +35,7 @@ async def run_detail_pipeline(
         detail = parse_detail_page(
             html=html,
             card_link=detail_link,
-            source_config=config,
+            source_config=source_config,
         )
 
         log.info("Parsed detail page successfully: %s", detail_link)
