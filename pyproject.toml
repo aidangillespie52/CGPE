@@ -9,6 +9,7 @@ dependencies = [
     "browserforge>=1.2.4",
     "bs4>=0.0.2",
     "fastapi[standard]>=0.128.1",
+    "lxml>=6.0.2",
     "requests>=2.32.5",
 ]
 
