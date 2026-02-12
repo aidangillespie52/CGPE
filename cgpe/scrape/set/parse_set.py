@@ -104,6 +104,7 @@ def parse_set_data(
         detail_link = detail_link.replace("/console/", "/game/")
         detail_links.append(detail_link)
 
+    log.info("Parsed %d detail links from %s", len(detail_links), set_link)
     return SetPage(
         set_link=set_link,
         detail_links=detail_links,
