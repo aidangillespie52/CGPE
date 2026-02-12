@@ -2,8 +2,8 @@
 
 import aiohttp
 
-from cgpe.pipeline.set_pipeline import run_set_pipeline
-from cgpe.pipeline.detail_pipeline import run_detail_pipeline
+from cgpe.pipeline.set import run_set_pipeline
+from cgpe.pipeline.detail import run_detail_pipeline
 from cgpe.logging.logger import setup_logger
 from cgpe.storage.detail_repo import upsert_detail
 from cgpe.storage.sqlite_db import connect_sqlite, init_schema
