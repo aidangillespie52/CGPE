@@ -59,29 +59,6 @@ def extract_set_name(soup: BeautifulSoup) -> str:
     return "Unknown Set"
 
 
-def extract_detail_links(soup: BeautifulSoup) -> List[str]:
-    log.debug("Extracting detail links from set page")
-
-    links: List[str] = []
-
-    table = soup.find("table", id="games_table")
-    if not table:
-        log.warning("Could not find games table: table#games_table")
-        return links
-
-    trs = table.find_all("tr")
-    log.debug("Found %d rows in games_table", len(trs))
-
-    # Skip header row
-    for tr in trs[1:]:
-        href = parse_detail_row(tr)
-        if href:
-            links.append(href)
-
-    log.info("Extracted %d detail links from set page", len(links))
-    return links
-
-
 # -----------------------------
 # Composition / "public API"
 # -----------------------------
