@@ -11,8 +11,8 @@ import aiohttp
 from cgpe.http.client import fetch_html, limited
 from cgpe.http.header_rotator import HeaderRotator
 
-from cgpe.pipeline.set_pipeline import run_set_pipeline
-from cgpe.pipeline.detail_pipeline import run_detail_pipeline
+from cgpe.pipeline.set import run_set_pipeline
+from cgpe.pipeline.detail import run_detail_pipeline
 from cgpe.scrape.detail.parse_detail import parse_detail_page
 from cgpe.scrape.sources.base import SourceConfig
 from cgpe.analysis.profit_analysis import calculate_profit
