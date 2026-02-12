@@ -5,7 +5,8 @@ from typing import Optional, Dict, List, Tuple, Any
 import json
 import re
 from pprint import pformat
-from bs4 import BeautifulSoup
+
+from bs4 import BeautifulSoup, SoupStrainer  # <-- SoupStrainer added
 
 from cgpe.scrape.sources.base import SourceConfig
 from cgpe.utils.time import utc_now_iso
@@ -14,6 +15,18 @@ from cgpe.logging.logger import setup_logger
 log = setup_logger(__name__)
 
 VGPC_POP_RE = re.compile(r"VGPC\.pop_data\s*=\s*(\{.*?\})\s*;", re.DOTALL)
+
+# Only parse the parts of the DOM we actually use:
+# - div#full-prices (graded/ungraded prices table)
+# - div#price_comparison (ebay completed auctions tables)
+# - div#full_details (card name)
+# - td[itemprop=model-number] (card number)
+
+_PARSE_ONLY = SoupStrainer(
+    name="div",
+    id=["full-prices", "price_comparison", "full_details"]
+)
+
 
 
 @dataclass
@@ -64,7 +77,6 @@ class Detail:
             "card_num": self.card_num,
             "source": source,
             "ungraded_price": self.ungraded_price,
-
             "grade7_mean": self.grade7_dist[0],
             "grade7_std": self.grade7_dist[1],
             "grade8_mean": self.grade8_dist[0],
@@ -73,14 +85,13 @@ class Detail:
             "grade9_std": self.grade9_dist[1],
             "grade10_mean": self.grade10_dist[0],
             "grade10_std": self.grade10_dist[1],
-
             "pop_json": json.dumps(self.pop) if self.pop is not None else None,
             "graded_prices_json": json.dumps(self.graded_prices_by_grade),
             "grades_1_to_10_json": json.dumps(self.grades_1_to_10),
-
             "scraped_at": utc_now_iso(),
         }
-    
+
+
 # -----------------------------
 # Normalization helpers
 # -----------------------------
@@ -113,22 +124,19 @@ def parse_price(text: str) -> Optional[float]:
 # -----------------------------
 
 def extract_prices_table(soup: BeautifulSoup) -> Dict[str, Optional[float]]:
-    log.debug("Extracting graded prices table")
-
     container = soup.find("div", id="full-prices")
     if not container:
-        log.error("Missing prices container: div#full-prices")
         raise ValueError("Could not find prices container: div#full-prices")
 
     table = container.find("table")
     if not table:
-        log.error("Missing prices table inside div#full-prices")
         raise ValueError("Could not find prices table inside div#full-prices")
 
     out: Dict[str, Optional[float]] = {}
 
+    # minor speed: avoid deep recursion when possible
     for tr in table.find_all("tr"):
-        tds = tr.find_all("td")
+        tds = tr.find_all("td", recursive=False) or tr.find_all("td")
         if len(tds) < 2:
             continue
 
@@ -136,72 +144,72 @@ def extract_prices_table(soup: BeautifulSoup) -> Dict[str, Optional[float]]:
         price = parse_price(tds[-1].get_text(" ", strip=True))
         out[grade] = price
 
-    log.info("Extracted %d graded price entries", len(out))
     return out
 
 def extract_ebay_tables(soup: BeautifulSoup):
     def extract(div):
+        if not div:
+            return (None, None)
+
         table = div.find("table")
-        
         if not table:
             return (None, None)
 
         trs = table.find_all("tr")
         prices = []
 
-        for tr in trs[1:]: # skip headers
-            td = tr.find_all("td", recursive=False)[3]
-            price = td.find("span")
-
-            if not price:
+        for tr in trs[1:]:  # skip headers
+            tds = tr.find_all("td", recursive=False)
+            if len(tds) <= 3:
                 continue
 
-            price = clean_price_text(price.text)
-            price = float(price)
-            prices.append(price)
+            price_span = tds[3].find("span")
+            if not price_span:
+                continue
+
+            price = clean_price_text(price_span.get_text(strip=True))
+            try:
+                prices.append(float(price))
+            except ValueError:
+                continue
 
         if len(prices) < 2:
             return (None, None)
-        
+
         mean = sum(prices) / len(prices)
-        stddev = (sum([(x - mean) ** 2 for x in prices]) / (len(prices)-1)) ** 0.5
-
+        stddev = (sum((x - mean) ** 2 for x in prices) / (len(prices) - 1)) ** 0.5
         return (mean, stddev)
-    
-    res_dict = dict()
 
-    soup = soup.find("div", id="price_comparison")
-    soup = soup.find("div", class_="tab-frame")
+    res_dict = {}
 
-    grade7_div = soup.find("div", class_="completed-auctions-cib")
-    grade8_div = soup.find("div", class_="completed-auctions-new")
-    grade9_div = soup.find("div", class_="completed-auctions-graded")
-    grade10_div = soup.find("div", class_="completed-auctions-manual-only")
+    pc = soup.find("div", id="price_comparison")
+    if not pc:
+        # if the ebay section is missing, return Nones rather than crash
+        return {"7": (None, None), "8": (None, None), "9": (None, None), "10": (None, None)}
 
-    mean7, dv7 = extract(grade7_div)
-    mean8, dv8 = extract(grade8_div)
-    mean9, dv9 = extract(grade9_div)
-    mean10, dv10 = extract(grade10_div)
+    frame = pc.find("div", class_="tab-frame")
+    if not frame:
+        return {"7": (None, None), "8": (None, None), "9": (None, None), "10": (None, None)}
 
-    res_dict['7'] = (mean7, dv7)
-    res_dict['8'] = (mean8, dv8)
-    res_dict['9'] = (mean9, dv9)
-    res_dict['10'] = (mean10, dv10)
+    grade7_div = frame.find("div", class_="completed-auctions-cib")
+    grade8_div = frame.find("div", class_="completed-auctions-new")
+    grade9_div = frame.find("div", class_="completed-auctions-graded")
+    grade10_div = frame.find("div", class_="completed-auctions-manual-only")
+
+    res_dict["7"] = extract(grade7_div)
+    res_dict["8"] = extract(grade8_div)
+    res_dict["9"] = extract(grade9_div)
+    res_dict["10"] = extract(grade10_div)
 
     return res_dict
 
 def extract_pop_data(html: str) -> Optional[dict]:
-    log.debug("Extracting population data")
-
     m = VGPC_POP_RE.search(html)
     if not m:
-        log.info("No population data found on page")
         return None
 
     try:
-        pop = json.loads(m.group(1))
-        log.info("Population data extracted (%d keys)", len(pop))
-        return pop
+        return json.loads(m.group(1))
     except json.JSONDecodeError:
         log.warning("Failed to decode population JSON")
         return None
@@ -209,42 +217,29 @@ def extract_pop_data(html: str) -> Optional[dict]:
 def extract_card_name(soup: BeautifulSoup) -> str:
     div = soup.find("div", id="full_details")
     if not div:
-        log.error("Missing div#full_details for card name")
         raise ValueError("Could not find card name: div#full_details")
 
     h2 = div.find("h2")
     if not h2:
-        log.error("Missing h2 inside div#full_details")
         raise ValueError("Could not find card name inside div#full_details h2")
 
-    name = clean_name(h2.text)
-    log.debug("Extracted card name: %s", name)
-    return name
+    return clean_name(h2.get_text(strip=True))
 
 def extract_card_num(soup: BeautifulSoup) -> str:
-    td = soup.find("td", itemprop="model-number")
+    td = soup.find("td", attrs={"itemprop": "model-number"})
     if not td:
-        log.warning("Card number not found (td[itemprop=model-number])")
         return ""
-
-    num = clean_card_num(td.text)
-    log.debug("Extracted card number: %s", num)
-    return num
+    return clean_card_num(td.get_text(strip=True))
 
 
 # -----------------------------
 # Composition
 # -----------------------------
 
-def map_prices_to_1_to_10(
-    prices: Dict[str, Optional[float]]
-) -> List[Optional[float]]:
-    log.debug("Mapping prices to grade 1-10 vector")
-
+def map_prices_to_1_to_10(prices: Dict[str, Optional[float]]) -> List[Optional[float]]:
     out: List[Optional[float]] = []
     for i in range(1, 10):
         out.append(prices.get(f"grade {i}"))
-
     out.append(prices.get("psa 10") or prices.get("grade 10"))
     return out
 
@@ -254,11 +249,15 @@ def parse_detail_page(
     card_link: str,
     source_config: SourceConfig,
 ) -> Detail:
-    log.info("Parsing detail page: %s", card_link)
+    
+    log.info("Starting parsing detail for link: %s", card_link)
 
-    soup = BeautifulSoup(html, "html.parser")
-
+    # Pop is regex-based and doesn't need DOM
     pop = extract_pop_data(html)
+
+    # SoupStrainer: parse only needed nodes; use lxml for speed
+    soup = BeautifulSoup(html, "lxml", parse_only=_PARSE_ONLY)
+
     graded_prices_by_grade = extract_prices_table(soup)
     grades_1_to_10 = map_prices_to_1_to_10(graded_prices_by_grade)
     grade_ebay_tables = extract_ebay_tables(soup)
@@ -272,25 +271,20 @@ def parse_detail_page(
         pop=pop,
         graded_prices_by_grade=graded_prices_by_grade,
         grades_1_to_10=grades_1_to_10,
-        grade7_dist=grade_ebay_tables['7'],
-        grade8_dist=grade_ebay_tables['8'],
-        grade9_dist=grade_ebay_tables['9'],
-        grade10_dist=grade_ebay_tables['10']
+        grade7_dist=grade_ebay_tables["7"],
+        grade8_dist=grade_ebay_tables["8"],
+        grade9_dist=grade_ebay_tables["9"],
+        grade10_dist=grade_ebay_tables["10"],
     )
 
-    log.info(
-        "Parsed detail page successfully: %s (grades=%d, pop=%s)",
-        detail.card_name,
-        len(detail.graded_prices_by_grade),
-        "yes" if pop else "no",
-    )
+    log.info("Parsed detail for card %r (link: %s)", detail.card_name, detail.card_link)
 
     return detail
 
 async def example():
     import aiohttp
 
-    link = "https://www.pricecharting.com/game/pokemon-destined-rivals/arven's-toedscool-109"
+    link = "https://www.pricecharting.com/game/pokemon-evolving-skies/rayquaza-vmax-218                                                                                                     "
     async with aiohttp.ClientSession() as session:
         async with session.get(link) as resp:
             html = await resp.text()
