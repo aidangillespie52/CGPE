@@ -22,32 +22,22 @@ async def backfill_sets(config: SourceConfig) -> None:
 
     details = []
 
-    for set_link in config.sets_to_scrape:
-        og_len = len(details)
+    connector = aiohttp.TCPConnector(limit=200, limit_per_host=50)
+    async with aiohttp.ClientSession(connector=connector) as session:
+        set_pages = await run_set_pipeline(
+            set_url=config.sets_to_scrape,
+            session=session,
+            source_config=config
+        )
+        
+        detail_links = []
+        for set_page in set_pages:
+            detail_links.extend(set_page.detail_links)
 
-        logger.info("Backfilling set: %s", set_link)
-
-        async with aiohttp.ClientSession() as session:
-            set_page = await run_set_pipeline(
-                set_url=set_link,
-                session=session,
-                source_config=config
-            )
-            
-            for url in set_page.detail_links:
-                detail = await run_detail_pipeline(
-                    detail_link=url,
-                    session=session,
-                    source_config=config
-                )
-
-                if detail:
-                    details.append(detail)
-
-        logger.info(
-            "Completed backfilling set: %s (fetched %d details)",
-            set_link,
-            len(details) - og_len,
+        details = await run_detail_pipeline(
+            detail_link=detail_links,
+            session=session,
+            source_config=config
         )
 
     # 3. STORE RESULTS
