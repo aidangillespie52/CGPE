@@ -40,9 +40,17 @@ async def run_detail_pipeline(
     log.info("Running detail pipeline for %d links", len(links))
 
     # 1) fetch ALL pages at once
-    html_pages: List[str] = await asyncio.gather(
-        *(fetch_html(session, url=link) for link in links)
+    results = await asyncio.gather(
+        *(fetch_html(session, url=l) for l in links),
+        return_exceptions=True,
     )
+
+    html_pages = []
+    for link, r in zip(links, results):
+        if isinstance(r, Exception):
+            log.warning("Failed to fetch %s: %r", link, r)
+        else:
+            html_pages.append(r)
 
     # 2) parse ALL at once
     details: List[Detail] = await asyncio.gather(
