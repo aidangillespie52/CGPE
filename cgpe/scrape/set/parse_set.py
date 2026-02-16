@@ -1,23 +1,14 @@
 # cgpe/scrape/set/parse_set.py
 
-from dataclasses import dataclass
 from typing import List
-from pprint import pformat
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 
+from cgpe.models.set import SetPage
 from cgpe.scrape.sources.base import SourceConfig
 from cgpe.logging.logger import setup_logger
 
 log = setup_logger(__name__)
-
-
-@dataclass
-class SetPage:
-    set_link: str
-    detail_links: List[str]
-    source_config: SourceConfig
-
 
 # -----------------------------
 # Normalization helpers
