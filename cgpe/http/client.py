@@ -34,7 +34,12 @@ async def _backoff(attempt: int, resp: aiohttp.ClientResponse) -> None:
         wait_s,
         attempt,
     )
-    await asyncio.sleep(wait_s)
+
+    try:
+        await asyncio.sleep(wait_s)
+    except asyncio.CancelledError:
+        log.debug("Backoff sleep cancelled for %s", str(resp.url))
+        raise
 
 
 async def fetch_html(
