@@ -8,8 +8,8 @@ from dataclasses import dataclass
 
 @dataclass
 class RateLimiter:
-    rps: float = 1.0
-    jitter_s: float = 0.20
+    rps: float = 15
+    jitter_s: float = 1
 
     def __post_init__(self) -> None:
         if self.rps <= 0:
@@ -43,4 +43,4 @@ def backoff_seconds(attempt: int, *, base: float = 1.0, cap: float = 60.0) -> fl
 
 
 # Global shared limiter (import this everywhere you do HTTP)
-RATE_LIMITER = RateLimiter(rps=0.25, jitter_s=0.10)
+RATE_LIMITER = RateLimiter(rps=10)
