@@ -35,7 +35,8 @@ def init_schema(conn: sqlite3.Connection) -> None:
             card_name TEXT NOT NULL,
             card_num  TEXT NOT NULL,
             source    TEXT,
-
+            card_img_link TEXT,
+            
             ungraded_price REAL,
 
             grade7_mean  REAL, grade7_std  REAL,

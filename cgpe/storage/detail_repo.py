@@ -27,6 +27,7 @@ def upsert_detail(conn: sqlite3.Connection, row: Dict[str, Any]) -> None:
         "card_name": row["card_name"],
         "card_num": row["card_num"],
         "source": row.get("source"),
+        "card_img_link": row.get("card_img_link"),
 
         "ungraded_price": row.get("ungraded_price"),
 
@@ -52,7 +53,7 @@ def upsert_detail(conn: sqlite3.Connection, row: Dict[str, Any]) -> None:
 
     sql = """
     INSERT INTO card_details (
-        card_link, card_name, card_num, source,
+        card_link, card_name, card_num, source, card_img_link,
         ungraded_price,
         grade7_mean, grade7_std,
         grade8_mean, grade8_std,
@@ -61,7 +62,7 @@ def upsert_detail(conn: sqlite3.Connection, row: Dict[str, Any]) -> None:
         pop_json, graded_prices_json, grades_1_to_10_json,
         scraped_at
     ) VALUES (
-        :card_link, :card_name, :card_num, :source,
+        :card_link, :card_name, :card_num, :source, :card_img_link,
         :ungraded_price,
         :grade7_mean, :grade7_std,
         :grade8_mean, :grade8_std,
@@ -73,6 +74,7 @@ def upsert_detail(conn: sqlite3.Connection, row: Dict[str, Any]) -> None:
     ON CONFLICT(card_link, source) DO UPDATE SET
         card_name=excluded.card_name,
         card_num=excluded.card_num,
+        card_img_link=excluded.card_img_link,
         ungraded_price=excluded.ungraded_price,
         grade7_mean=excluded.grade7_mean,
         grade7_std=excluded.grade7_std,
@@ -109,4 +111,5 @@ def get_detail_by_link(conn: sqlite3.Connection, *, card_link: str, source: Opti
     for k in ("pop_json", "graded_prices_json", "grades_1_to_10_json"):
         if d.get(k) is not None:
             d[k] = json.loads(d[k])
+
     return d
