@@ -27,16 +27,6 @@ def clean_set_name(text: str) -> str:
     return text.strip()
 
 
-def parse_detail_row(row) -> str:
-    a_tag = row.find("a", href=True)
-    if a_tag:
-        href = a_tag["href"]
-        log.debug("Parsed detail row href=%s", href)
-        return href
-    log.debug("No link found in detail row")
-    return ""
-
-
 # -----------------------------
 # Extractors (raw -> structured)
 # -----------------------------
