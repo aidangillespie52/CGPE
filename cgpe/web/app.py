@@ -11,7 +11,6 @@ from fastapi.templating import Jinja2Templates
 from cgpe.storage.sqlite_db import connect_sqlite
 from cgpe.storage.detail_repo import get_detail_by_link
 from cgpe.storage.queries.web_search import search_card_details
-from cgpe.web.services.enrich import enrich_detail
 from cgpe.web.services.profit_board import iter_all_details, top_by_profit
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -37,13 +36,26 @@ def search_api(q: str = Query(...), source: Optional[str] = None, limit: int = 2
 def card_page(request: Request, link: str = Query(...), source: Optional[str] = None):
     conn = connect_sqlite(DB_PATH)
     try:
-        d = get_detail_by_link(conn, card_link=link, source=source)
-        if not d:
+        card = get_detail_by_link(conn, card_link=link, source=source)
+        if not card:
             raise HTTPException(404, "Card not found")
-        d = enrich_detail(d)
     finally:
         conn.close()
-    return templates.TemplateResponse("card.html", {"request": request, "card": d})
+
+    return templates.TemplateResponse("card.html", {"request": request, "card": card.to_db_row()})
+
+
+@app.get("/api/card")
+def card_api(link: str = Query(...), source: Optional[str] = None):
+    conn = connect_sqlite(DB_PATH)
+    try:
+        card = get_detail_by_link(conn, card_link=link, source=source)
+        if not card:
+            raise HTTPException(404, "Card not found")
+        
+        return card.to_db_row()
+    finally:
+        conn.close()
 
 
 @app.get("/profit", response_class=HTMLResponse)
