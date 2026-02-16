@@ -35,7 +35,6 @@ cgpe/
 ├─ web/                  # FastAPI app + UI
 │  ├─ app.py
 │  ├─ services/          # business logic for web
-│  │  ├─ enrich.py
 │  │  └─ profit_board.py
 │  ├─ static/
 │  │  └─ search.css
