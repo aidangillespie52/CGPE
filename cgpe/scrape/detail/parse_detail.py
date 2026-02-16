@@ -1,17 +1,14 @@
 # cgpe/scrape/detail/parse_detail.py
 
-from dataclasses import dataclass
-from typing import Optional, Dict, List, Tuple, Any
+from typing import Optional, Dict, List
 import json
 import re
-from pprint import pformat
-
-from bs4 import BeautifulSoup, SoupStrainer  # <-- SoupStrainer added
+from bs4 import BeautifulSoup, SoupStrainer
 
 from cgpe.scrape.sources.base import SourceConfig
-from cgpe.utils.time import utc_now_iso
-from cgpe.logging.logger import setup_logger
+from cgpe.models.detail import Detail
 
+from cgpe.logging.logger import setup_logger
 log = setup_logger(__name__)
 
 VGPC_POP_RE = re.compile(r"VGPC\.pop_data\s*=\s*(\{.*?\})\s*;", re.DOTALL)
@@ -26,73 +23,6 @@ _PARSE_ONLY = SoupStrainer(
     name="div",
     id=["full-prices", "price_comparison", "full_details", "product_details"]
 )
-
-
-
-@dataclass
-class Detail:
-    card_link: str
-    card_name: str
-    card_num: str
-    source_config: SourceConfig
-    pop: Optional[dict]
-    graded_prices_by_grade: Dict[str, Optional[float]]
-    grades_1_to_10: List[Optional[float]]
-    grade7_dist: Tuple[float, float]
-    grade8_dist: Tuple[float, float]
-    grade9_dist: Tuple[float, float]
-    grade10_dist: Tuple[float, float]
-    ungraded_price: Optional[float] = None
-    card_img_link: Optional[str] = None
-    
-    def __repr__(self) -> str:
-        src = getattr(self.source_config, "source", None)
-
-        pop_s = pformat(self.pop, width=88, compact=False)
-        prices_s = pformat(self.graded_prices_by_grade, width=88, compact=False)
-        g10_s = pformat(self.grades_1_to_10, width=88, compact=False)
-
-        return (
-            "Detail(\n"
-            f"  card_link={self.card_link!r},\n"
-            f"  card_name={self.card_name!r},\n"
-            f"  card_num={self.card_num!r},\n"
-            f"  source={src!r},\n"
-            f"  ungraded_price={self.ungraded_price!r},\n"
-            f"  pop={pop_s},\n"
-            f"  graded_prices_by_grade={prices_s},\n"
-            f"  grades_1_to_10={g10_s},\n"
-            f"  grade7_dist=(mean={self.grade7_dist[0]},stddev={self.grade7_dist[1]})\n"
-            f"  grade8_dist=(mean={self.grade8_dist[0]},stddev={self.grade8_dist[1]})\n"
-            f"  grade9_dist=(mean={self.grade9_dist[0]},stddev={self.grade9_dist[1]})\n"
-            f"  grade10_dist=(mean={self.grade10_dist[0]},stddev={self.grade10_dist[1]}\n)"
-            ")"
-        )
-
-    def to_db_row(self) -> Dict[str, Any]:
-        source = getattr(self.source_config, "source", None)
-
-        return {
-            "card_link": self.card_link,
-            "card_name": self.card_name,
-            "card_num": self.card_num,
-            "source": source,
-            "card_img_link": self.card_img_link,
-            "ungraded_price": self.ungraded_price,
-            "grade7_mean": self.grade7_dist[0],
-            "grade7_std": self.grade7_dist[1],
-            "grade8_mean": self.grade8_dist[0],
-            "grade8_std": self.grade8_dist[1],
-            "grade9_mean": self.grade9_dist[0],
-            "grade9_std": self.grade9_dist[1],
-            "grade10_mean": self.grade10_dist[0],
-            "grade10_std": self.grade10_dist[1],
-            "pop_json": json.dumps(self.pop) if self.pop is not None else None,
-            "graded_prices_json": json.dumps(self.graded_prices_by_grade),
-            "grades_1_to_10_json": json.dumps(self.grades_1_to_10),
-            "scraped_at": utc_now_iso(),
-        }
-
 
 # -----------------------------
 # Normalization helpers
@@ -279,7 +209,6 @@ def parse_detail_page(
         card_link=card_link,
         card_name=extract_card_name(soup),
         card_num=extract_card_num(soup),
-        source_config=source_config,
         pop=pop,
         graded_prices_by_grade=graded_prices_by_grade,
         grades_1_to_10=grades_1_to_10,
