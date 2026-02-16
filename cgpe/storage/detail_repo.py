@@ -9,12 +9,13 @@ from cgpe.models.detail import Detail
 
 def upsert_detail(conn: sqlite3.Connection, row: Union[Detail, Dict[str, Any]]) -> None:
     if isinstance(row, Detail):
-        detail = row
+        d = row
+    elif "graded_prices_by_grade" in row or "pop" in row or "grade7_dist" in row:
+        d = Detail(**row)  # model-shaped
     else:
-        # if it looks like a DB row, convert it
-        detail = Detail.from_db_row(row) if "grade7_mean" in row else Detail(**row)
+        d = Detail.from_db_row(row)  # db-shaped
 
-    conn.execute(Detail.upsert_sql(), detail.to_db_row())
+    conn.execute(Detail.upsert_sql(), d.to_db_row())
     conn.commit()
 
 

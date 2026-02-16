@@ -5,27 +5,20 @@ from pathlib import Path
 
 
 def connect_sqlite(db_path: str | Path) -> sqlite3.Connection:
-    """
-    Open a SQLite connection with sane defaults.
-    """
     db_path = Path(db_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
 
-    # Good defaults for multi-process-ish / polling workloads
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA foreign_keys=ON;")
-    conn.execute("PRAGMA busy_timeout=5000;")  # ms
+    conn.execute("PRAGMA busy_timeout=5000;")
 
     return conn
 
 
 def init_schema(conn: sqlite3.Connection) -> None:
-    """
-    Create tables if they don't exist.
-    """
     conn.executescript(
         """
         CREATE TABLE IF NOT EXISTS card_details (
@@ -36,7 +29,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
             card_num  TEXT NOT NULL,
             source    TEXT,
             card_img_link TEXT,
-            
+
             ungraded_price REAL,
 
             grade7_mean  REAL, grade7_std  REAL,
@@ -47,6 +40,9 @@ def init_schema(conn: sqlite3.Connection) -> None:
             pop_json             TEXT,
             graded_prices_json   TEXT NOT NULL,
             grades_1_to_10_json  TEXT NOT NULL,
+
+            expected_value  REAL,
+            expected_profit REAL,
 
             scraped_at TEXT NOT NULL,
 

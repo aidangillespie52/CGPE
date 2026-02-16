@@ -1,48 +1,37 @@
-# cgpe/models/detail.py
-from __future__ import annotations
+# cgpe/models/detail.py  (only the parts you need to change)
 
-import json
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple, List
 
 from cgpe.utils.json import safe_dumps, safe_loads
 from cgpe.utils.time import utc_now_iso
 
+
 @dataclass
 class Detail:
-    # identity
     card_link: str
     source: Optional[str] = None
 
-    # display
     card_name: str = ""
     card_num: str = ""
     card_img_link: Optional[str] = None
 
-    # prices
     ungraded_price: Optional[float] = None
-    graded_prices_by_grade: Dict[str, Optional[float]] = None  # e.g. {"grade 1": 1.2, "psa 10": 100.0}
-    grades_1_to_10: List[Optional[float]] = None
+    graded_prices_by_grade: Dict[str, Optional[float]] | None = None
+    grades_1_to_10: List[Optional[float]] | None = None
 
-    # ebay-derived dists
     grade7_dist: Tuple[Optional[float], Optional[float]] = (None, None)
     grade8_dist: Tuple[Optional[float], Optional[float]] = (None, None)
     grade9_dist: Tuple[Optional[float], Optional[float]] = (None, None)
     grade10_dist: Tuple[Optional[float], Optional[float]] = (None, None)
 
-    # population
     pop: Optional[dict] = None
 
-    # bookkeeping
+    expected_value: Optional[float] = None
+    expected_profit: Optional[float] = None
+
     scraped_at: Optional[str] = None
 
-    def __post_init__(self) -> None:
-        if self.graded_prices_by_grade is None:
-            self.graded_prices_by_grade = {}
-        if self.grades_1_to_10 is None:
-            self.grades_1_to_10 = []
-
-    # ---- DB schema (single source of truth) ----
     TABLE = "card_details"
     KEY_COLUMNS = ("card_link", "source")
     COLUMNS = (
@@ -63,9 +52,16 @@ class Detail:
         "pop_json",
         "graded_prices_json",
         "grades_1_to_10_json",
+        "expected_value",
+        "expected_profit",
         "scraped_at",
     )
-    JSON_COLUMNS = ("pop_json", "graded_prices_json", "grades_1_to_10_json")
+
+    def __post_init__(self) -> None:
+        if self.graded_prices_by_grade is None:
+            self.graded_prices_by_grade = {}
+        if self.grades_1_to_10 is None:
+            self.grades_1_to_10 = []
 
     def to_db_row(self) -> Dict[str, Any]:
         return {
@@ -86,6 +82,8 @@ class Detail:
             "pop_json": safe_dumps(self.pop),
             "graded_prices_json": safe_dumps(self.graded_prices_by_grade),
             "grades_1_to_10_json": safe_dumps(self.grades_1_to_10),
+            "expected_value": self.expected_value,
+            "expected_profit": self.expected_profit,
             "scraped_at": self.scraped_at or utc_now_iso(),
         }
 
@@ -105,6 +103,8 @@ class Detail:
             pop=safe_loads(r.get("pop_json")),
             graded_prices_by_grade=safe_loads(r.get("graded_prices_json")) or {},
             grades_1_to_10=safe_loads(r.get("grades_1_to_10_json")) or [],
+            expected_value=r.get("expected_value"),
+            expected_profit=r.get("expected_profit"),
             scraped_at=r.get("scraped_at"),
         )
 
@@ -112,13 +112,8 @@ class Detail:
     def upsert_sql(cls) -> str:
         cols = ", ".join(cls.COLUMNS)
         vals = ", ".join(f":{c}" for c in cls.COLUMNS)
-
-        # update everything except key columns
         key = set(cls.KEY_COLUMNS)
-        updates = ",\n        ".join(
-            f"{c}=excluded.{c}" for c in cls.COLUMNS if c not in key
-        )
-
+        updates = ", ".join(f"{c}=excluded.{c}" for c in cls.COLUMNS if c not in key)
         return f"""
         INSERT INTO {cls.TABLE} ({cols})
         VALUES ({vals})
