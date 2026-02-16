@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CGPE Profit Board</title>
+  <link rel="stylesheet" href="/static/search.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">CGPE</div>
+  </header>
+
+  <main class="container">
+    <section class="panel">
+      <div class="row">
+        <input
+          id="source"
+          type="search"
+          placeholder="Optional source filter (e.g. pricecharting)"
+          autocomplete="off"
+        />
+        <input
+          id="limit"
+          type="number"
+          min="1"
+          max="500"
+          value="100"
+          style="max-width: 120px"
+        />
+        <button id="refreshBtn">Refresh</button>
+      </div>
+      <div id="meta" class="muted"></div>
+    </section>
+
+    <section id="results" class="results"></section>
+  </main>
+
+  <script>
+    const $ = (s) => document.querySelector(s);
+
+    function money(n) {
+      if (n == null || Number.isNaN(n)) return "—";
+      return `$${Number(n).toFixed(2)}`;
+    }
+
+    async function runProfitBoard() {
+      const source = $("#source").value.trim();
+      const limit = Math.max(1, Math.min(500, Number($("#limit").value || 100)));
+
+      $("#meta").textContent = "Loading… (this may take a bit if your DB is large)";
+      $("#results").innerHTML = "";
+
+      const qs = new URLSearchParams();
+      qs.set("limit", String(limit));
+      if (source) qs.set("source", source);
+
+      const res = await fetch(`/api/profit?${qs.toString()}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        $("#meta").textContent = data?.detail || "Error";
+        return;
+      }
+
+      $("#meta").textContent = `${data.count} card(s) shown • scanned ${data.scanned} total`;
+
+      for (const r of data.rows) {
+        const el = document.createElement("div");
+        el.className = "result";
+
+        const cardUrl =
+          `/card?link=${encodeURIComponent(r.card_link)}` +
+          (r.source ? `&source=${encodeURIComponent(r.source)}` : "");
+
+        el.innerHTML = `
+          <div class="result-row">
+            <a href="${cardUrl}">
+              <img
+                class="card-img"
+                src="${r.card_img_link || ""}"
+                alt="${r.card_name || "Card"}"
+                loading="lazy"
+                onerror="this.style.display='none'"
+              />
+            </a>
+
+            <div class="result-body">
+              <div class="name">
+                <a href="${cardUrl}" class="card-link">
+                  ${r.card_name || "Unknown"}
+                </a>
+              </div>
+
+              <div class="muted">
+                ${r.card_num || ""}${r.source ? " • " + r.source : ""}
+              </div>
+
+              <div class="kpis">
+                <div>Ungraded: <b>${money(r.ungraded_price)}</b></div>
+                <div>EV: <b>${money(r.expected_value)}</b></div>
+                <div>Profit: <b>${money(r.expected_profit)}</b></div>
+              </div>
+            </div>
+          </div>
+        `;
+
+        $("#results").appendChild(el);
+      }
+    }
+
+    $("#refreshBtn").addEventListener("click", runProfitBoard);
+    window.addEventListener("load", runProfitBoard);
+  </script>
+</body>
+</html>

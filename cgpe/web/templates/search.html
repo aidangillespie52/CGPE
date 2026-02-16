@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CGPE Search</title>
+
+  <link rel="stylesheet" href="/static/search.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">CGPE</div>
+  </header>
+
+  <main class="container">
+    <!-- Search box -->
+    <section class="panel">
+      <div class="row">
+        <input
+          id="q"
+          type="search"
+          placeholder="Search by card name or number (e.g. Charizard 4/102)"
+          autocomplete="off"
+        />
+        <button id="searchBtn">Search</button>
+      </div>
+      <div id="meta" class="muted"></div>
+    </section>
+
+    <!-- Results -->
+    <section id="results" class="results"></section>
+  </main>
+
+  <script>
+    const $ = (s) => document.querySelector(s);
+
+    function money(n) {
+      if (n == null || Number.isNaN(n)) return "—";
+      return `$${Number(n).toFixed(2)}`;
+    }
+
+    async function runSearch() {
+      const q = $("#q").value.trim();
+      if (!q) return;
+
+      $("#meta").textContent = "Searching…";
+      $("#results").innerHTML = "";
+
+      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+
+      $("#meta").textContent = `${data.count} result(s)`;
+
+      for (const r of data.rows) {
+        const el = document.createElement("div");
+        el.className = "result";
+
+        const cardUrl =
+          `/card?link=${encodeURIComponent(r.card_link)}` +
+          (r.source ? `&source=${encodeURIComponent(r.source)}` : "");
+
+        el.innerHTML = `
+          <div class="result-row">
+            <a href="${cardUrl}">
+              <img
+                class="card-img"
+                src="${r.card_img_link || ""}"
+                alt="${r.card_name}"
+                loading="lazy"
+                onerror="this.style.display='none'"
+              />
+            </a>
+
+            <div class="result-body">
+              <div class="name">
+                <a href="${cardUrl}" class="card-link">
+                  ${r.card_name}
+                </a>
+              </div>
+
+              <div class="muted">
+                ${r.card_num}${r.source ? " • " + r.source : ""}
+              </div>
+
+              <div class="kpis">
+                <div>Ungraded: <b>${money(r.ungraded_price)}</b></div>
+                <div>PSA 10 Mean: <b>${money(r.grade10_mean)}</b></div>
+              </div>
+            </div>
+          </div>
+        `;
+
+
+        $("#results").appendChild(el);
+      }
+    }
+
+    $("#searchBtn").addEventListener("click", runSearch);
+    $("#q").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") runSearch();
+    });
+  </script>
+</body>
+</html>

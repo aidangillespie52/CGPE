@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ card.card_name }} • CGPE</title>
+  <link rel="stylesheet" href="/static/search.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <a href="/" style="color:inherit;text-decoration:none;">CGPE</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="panel">
+      <div style="display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap;">
+        {% if card.card_img_link %}
+          <img
+            src="{{ card.card_img_link }}"
+            alt="{{ card.card_name }}"
+            style="width:180px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.2);"
+            loading="lazy"
+          />
+        {% endif %}
+
+        <div style="flex:1; min-width:260px;">
+          <div class="name" style="font-size:22px;">{{ card.card_name }}</div>
+          <div class="muted" style="margin-top:6px;">
+            {{ card.card_num }}{% if card.source %} • {{ card.source }}{% endif %}
+          </div>
+
+          <div class="kpis" style="margin-top:14px;">
+            <div>
+              Ungraded:
+              <b data-num="{{ card.ungraded_price }}"></b>
+            </div>
+            <div>
+              PSA 10 Mean:
+              <b data-num="{{ card.grade10_mean }}"></b>
+            </div>
+          </div>
+
+          <div class="muted" style="margin-top:12px;">
+            Scraped: {{ card.scraped_at }}
+          </div>
+
+          <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+            <a
+              class="link"
+              href="{{ card.card_link }}"
+              target="_blank"
+              rel="noreferrer"
+              style="text-decoration:none;border:1px solid rgba(255,255,255,.12);padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.06);">
+              Open Source Page
+            </a>
+            <a
+              class="link"
+              href="/api/card?link={{ card.card_link | urlencode }}{% if card.source %}&source={{ card.source | urlencode }}{% endif %}"
+              target="_blank"
+              rel="noreferrer"
+              style="text-decoration:none;border:1px solid rgba(255,255,255,.12);padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.06);">
+              View JSON
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" style="margin-top:14px;">
+      <div class="name" style="font-size:16px;">Grade Means / Std</div>
+      <div class="kpis" style="margin-top:12px;">
+        <div>PSA 7: <b data-num="{{ card.grade7_mean }}"></b> (std <span data-num="{{ card.grade7_std }}"></span>)</div>
+        <div>PSA 8: <b data-num="{{ card.grade8_mean }}"></b> (std <span data-num="{{ card.grade8_std }}"></span>)</div>
+        <div>PSA 9: <b data-num="{{ card.grade9_mean }}"></b> (std <span data-num="{{ card.grade9_std }}"></span>)</div>
+        <div>PSA 10: <b data-num="{{ card.grade10_mean }}"></b> (std <span data-num="{{ card.grade10_std }}"></span>)</div>
+      </div>
+      <div class="kpis" style="margin-top:14px;">
+        <div>Expected Value: <b data-num="{{ card.expected_value }}"></b></div>
+        <div>Expected Profit: <b data-num="{{ card.expected_profit }}"></b></div>
+    </div>
+
+    </section>
+
+  </main>
+
+  <script>
+    function fmt(n) {
+      if (n === null || n === undefined || n === "" || Number.isNaN(Number(n))) {
+        return "—";
+      }
+      return Number(n).toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    }
+
+    document.querySelectorAll("[data-num]").forEach(el => {
+      el.textContent = fmt(el.dataset.num);
+    });
+  </script>
+</body>
+</html>
