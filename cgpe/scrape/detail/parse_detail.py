@@ -24,7 +24,7 @@ VGPC_POP_RE = re.compile(r"VGPC\.pop_data\s*=\s*(\{.*?\})\s*;", re.DOTALL)
 
 _PARSE_ONLY = SoupStrainer(
     name="div",
-    id=["full-prices", "price_comparison", "full_details"]
+    id=["full-prices", "price_comparison", "full_details", "product_details"]
 )
 
 
@@ -43,7 +43,8 @@ class Detail:
     grade9_dist: Tuple[float, float]
     grade10_dist: Tuple[float, float]
     ungraded_price: Optional[float] = None
-
+    card_img_link: Optional[str] = None
+    
     def __repr__(self) -> str:
         src = getattr(self.source_config, "source", None)
 
@@ -76,6 +77,7 @@ class Detail:
             "card_name": self.card_name,
             "card_num": self.card_num,
             "source": source,
+            "card_img_link": self.card_img_link,
             "ungraded_price": self.ungraded_price,
             "grade7_mean": self.grade7_dist[0],
             "grade7_std": self.grade7_dist[1],
@@ -231,6 +233,15 @@ def extract_card_num(soup: BeautifulSoup) -> str:
         return ""
     return clean_card_num(td.get_text(strip=True))
 
+def extract_img_link(soup: BeautifulSoup) -> str:
+    div = soup.find("div", id="product_details")
+    div = div.find("div", recursive=False).find("img")
+
+    if not div:
+        raise ValueError("Could not find image inside div#product_details")
+    
+    return div["src"]
+
 
 # -----------------------------
 # Composition
@@ -261,6 +272,7 @@ def parse_detail_page(
     graded_prices_by_grade = extract_prices_table(soup)
     grades_1_to_10 = map_prices_to_1_to_10(graded_prices_by_grade)
     grade_ebay_tables = extract_ebay_tables(soup)
+    card_img_link = extract_img_link(soup)
 
     detail = Detail(
         ungraded_price=graded_prices_by_grade.get("ungraded"),
@@ -275,6 +287,7 @@ def parse_detail_page(
         grade8_dist=grade_ebay_tables["8"],
         grade9_dist=grade_ebay_tables["9"],
         grade10_dist=grade_ebay_tables["10"],
+        card_img_link=card_img_link,
     )
 
     log.info("Parsed detail for card %r (link: %s)", detail.card_name, detail.card_link)
