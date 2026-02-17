@@ -10,7 +10,6 @@ def build_headers() -> dict[str, str]:
     headers = _gen.generate()
 
     # Normalize / override encodings
-    # Remove Brotli (`br`) because aiohttp can't decode it unless brotli is installed
     headers["Accept-Encoding"] = "gzip, deflate"
 
     # Optional consistency tweaks
