@@ -20,29 +20,31 @@ It scrapes raw market data, normalizes it into a consistent schema, computes exp
 ## Project Structure
 
 ```text
-cgpe/
-├─ scripts/              # one-off utilities (db inspection, etc.)
-├─ services/             # orchestration jobs (e.g. backfills)
-│  └─ backfill_sets.py
-├─ storage/              # database access layer
-│  ├─ detail_repo.py
-│  ├─ sqlite_db.py
-│  └─ queries/
-│     └─ web_search.py
-├─ utils/                # shared helpers
-│  ├─ json.py
-│  └─ time.py
-├─ web/                  # FastAPI app + UI
-│  ├─ app.py
-│  ├─ services/          # business logic for web
-│  │  └─ profit_board.py
-│  ├─ static/
-│  │  └─ search.css
-│  └─ templates/
-│     ├─ search.html
-│     ├─ card.html
-│     └─ profit.html
-├─ data/
-│  └─ cgpe.sqlite3       # SQLite database
-└─ logs/
-   └─ cgpe.log*
+CGPE/
+├─ arbitrage/            # (optional) arbitrage-related experiments/tools
+├─ cgpe/                 # main package
+│  ├─ analysis/          # expected value + profit calculations
+│  ├─ cli/               # command-line entrypoints
+│  ├─ config/            # config objects + scraper settings
+│  ├─ http/              # fetching, headers, rate limiting, retries
+│  ├─ logging/           # logger setup
+│  ├─ models/            # core domain models (Detail, Set, etc.)
+│  ├─ pipeline/          # orchestration of scrape → parse → persist steps
+│  ├─ scrape/            # site-specific parsing + scrape helpers
+│  │  ├─ index/          # “what sets exist” / discovery lists
+│  │  ├─ category/       # category/list page parsing
+│  │  ├─ set/            # set page parsing
+│  │  ├─ detail/         # detail page parsing
+│  │  └─ sources/        # per-source configuration + adapters
+│  ├─ scripts/           # one-off utilities (db inspection, etc.)
+│  ├─ services/          # long-running jobs / backfills
+│  ├─ storage/           # DB layer (repos + SQL queries)
+│  ├─ utils/             # shared helpers
+│  └─ web/               # FastAPI app + UI (templates/static)
+├─ data/                 # sqlite db + local data artifacts
+├─ logs/                 # runtime logs
+├─ Dockerfile
+├─ pyproject.toml
+├─ README.md
+└─ uv.lock
+
