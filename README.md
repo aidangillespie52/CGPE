@@ -21,7 +21,6 @@ It scrapes raw market data, normalizes it into a consistent schema, computes exp
 
 ```text
 CGPE/
-├─ arbitrage/            # (optional) arbitrage-related experiments/tools
 ├─ cgpe/                 # main package
 │  ├─ analysis/          # expected value + profit calculations
 │  ├─ cli/               # command-line entrypoints
