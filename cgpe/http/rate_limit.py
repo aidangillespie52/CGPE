@@ -22,9 +22,6 @@ class RateLimiter:
         self._next_time = 0.0  # monotonic timestamp
 
     async def wait(self) -> None:
-        """
-        Await until you're allowed to make the next request.
-        """
         async with self._lock:
             now = time.monotonic()
             if now < self._next_time:
@@ -43,4 +40,4 @@ def backoff_seconds(attempt: int, *, base: float = 1.0, cap: float = 60.0) -> fl
 
 
 # Global shared limiter (import this everywhere you do HTTP)
-RATE_LIMITER = RateLimiter(rps=10)
+RATE_LIMITER = RateLimiter(rps=15, jitter_s=1)
