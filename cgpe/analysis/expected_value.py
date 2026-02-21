@@ -4,7 +4,7 @@ import logging
 from typing import Iterable, Sequence
 from cgpe.logging.logger import setup_logger
 
-log = setup_logger(__name__, logging.DEBUG)
+log = setup_logger(__name__)
 
 
 def expected_value_from_population_and_prices(
@@ -22,8 +22,6 @@ def expected_value_from_population_and_prices(
     - Grades with population <= min_population are ignored
     - Prices are only used where population exists
     """
-
-    log.info("Starting expected value computation")
 
     # ---- length validation ----
     if (
@@ -46,7 +44,12 @@ def expected_value_from_population_and_prices(
     # ---- main accumulation ----
     for pop, price in zip(population, prices):
         pop_f = float(pop)
+        price_f = float(price) if price is not None else None
 
+        if not price_f:
+            log.debug("Grade with population %.4f has no price, treating as None", pop_f)
+            return 0.0
+        
         # ---- population filters ----
         if drop_nonpositive_population and pop_f <= 0:
             skipped_low_pop += 1
@@ -57,12 +60,10 @@ def expected_value_from_population_and_prices(
             continue
 
         # ---- price filter ----
-        if require_price_if_population and price is None:
+        if require_price_if_population and price_f is None:
             skipped_no_price += 1
             continue
-
-        price_f = float(price)
-
+        
         weighted_sum += pop_f * price_f
         total_pop += pop_f
         processed += 1
@@ -75,13 +76,6 @@ def expected_value_from_population_and_prices(
             total_pop,
         )
 
-    log.info(
-        "Processed %d grades | skipped_low_pop=%d | skipped_no_price=%d",
-        processed,
-        skipped_low_pop,
-        skipped_no_price,
-    )
-
     if total_pop <= 0:
         log.warning(
             "EV undefined: no population mass after filtering "
@@ -92,5 +86,4 @@ def expected_value_from_population_and_prices(
 
     ev = weighted_sum / total_pop
 
-    log.info("Expected value computed: %.4f", ev)
     return ev
