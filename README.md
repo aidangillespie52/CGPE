@@ -1,19 +1,36 @@
 # CGPE — Card Grading Profitability Engine
 
-CGPE is a data pipeline and web app for analyzing the **expected value and profitability of grading trading cards** (currently focused on Pokémon).
+CGPE is a **data pipeline, analysis engine, and web app** for identifying **profitable trading cards to grade**, currently focused on Pokémon.
 
-It scrapes raw market data, normalizes it into a consistent schema, computes expected value using population and price distributions, and surfaces the most profitable cards via a FastAPI web interface.
+It scrapes public market data, normalizes it into a stable schema, computes expected value using **population and price distributions**, and exposes results via both a **queryable database** and a **FastAPI web interface**. The system is designed to support future **signal generation** and **arbitrage research**, not automated execution.
 
 ---
 
-## Features
+## What CGPE Does
 
-- 🔍 Concurrent scraping with `aiohttp`
-- 🧮 Expected value modeling using population + price data
-- 💾 SQLite persistence with a single-source-of-truth `Detail` model
-- 📊 Profit ranking (highest → lowest expected profit)
-- 🌐 FastAPI web UI (search, card view, profit board)
-- 🧱 Clean separation of models, services, storage, and web layers
+- Discovers sets, categories, and individual cards
+- Scrapes raw population + pricing data concurrently
+- Normalizes volatile HTML into stable domain models
+- Persists results into SQLite as a single source of truth
+- Computes expected value and profitability metrics
+- Surfaces profitable cards via search and ranking views
+
+**What it does *not* do (by design):**
+- Place trades
+- Auto-buy or auto-sell cards
+- Circumvent site protections
+
+---
+
+## Key Features
+
+- 🔍 **Concurrent scraping** using `aiohttp`
+- 🧠 **Expected value modeling** from real population + price distributions
+- 💾 **SQLite persistence** with repository-style access
+- 🧱 **Clear separation of concerns** (scrape → pipeline → storage → analysis)
+- 🌐 **FastAPI web app** (search, card view, profit board)
+- 📊 **Profit ranking & filtering**
+- 📡 **Signals & arbitrage research hooks** (non-executing)
 
 ---
 
@@ -21,29 +38,34 @@ It scrapes raw market data, normalizes it into a consistent schema, computes exp
 
 ```text
 CGPE/
-├─ cgpe/                 # main package
-│  ├─ analysis/          # expected value + profit calculations
-│  ├─ cli/               # command-line entrypoints
-│  ├─ config/            # config objects + scraper settings
-│  ├─ http/              # fetching, headers, rate limiting, retries
-│  ├─ logging/           # logger setup
-│  ├─ models/            # core domain models (Detail, Set, etc.)
-│  ├─ pipeline/          # orchestration of scrape → parse → persist steps
-│  ├─ scrape/            # site-specific parsing + scrape helpers
-│  │  ├─ index/          # “what sets exist” / discovery lists
-│  │  ├─ category/       # category/list page parsing
-│  │  ├─ set/            # set page parsing
-│  │  ├─ detail/         # detail page parsing
-│  │  └─ sources/        # per-source configuration + adapters
-│  ├─ scripts/           # one-off utilities (db inspection, etc.)
-│  ├─ services/          # long-running jobs / backfills
-│  ├─ storage/           # DB layer (repos + SQL queries)
-│  ├─ utils/             # shared helpers
-│  └─ web/               # FastAPI app + UI (templates/static)
-├─ data/                 # sqlite db + local data artifacts
-├─ logs/                 # runtime logs
+├─ cgpe/                     # main package
+│  ├─ analysis/              # EV + profitability calculations
+│  ├─ cli/                   # command-line tools
+│  ├─ config/                # scraper & source configuration
+│  ├─ http/                  # HTTP client, headers, rate limiting
+│  ├─ logging/               # structured logging
+│  ├─ models/                # core domain models (Detail, Set, etc.)
+│  ├─ pipeline/              # orchestration: scrape → parse → persist
+│  ├─ scrape/                # site-specific scraping & parsing
+│  │  ├─ index/              # discovery (what sets exist)
+│  │  ├─ category/           # category/list pages
+│  │  ├─ set/                # set pages
+│  │  ├─ detail/             # individual card pages
+│  │  └─ sources/            # per-site adapters & configs
+│  ├─ scripts/               # utilities (DB inspection, debugging)
+│  ├─ services/              # long-running jobs (backfills, refreshes)
+│  ├─ signals/               # arbitrage & profitability signal research
+│  ├─ storage/               # DB layer (repos, queries, sqlite)
+│  ├─ utils/                 # shared helpers
+│  └─ web/                   # FastAPI app + UI
+│     ├─ services/           # web-facing service logic
+│     ├─ templates/          # Jinja templates
+│     └─ static/             # CSS / assets
+├─ arbitrage/                # experimental arbitrage research
+├─ data/                     # SQLite database
+├─ logs/                     # rotating logs
+├─ downloaded_files/         # transient runtime artifacts
 ├─ Dockerfile
 ├─ pyproject.toml
-├─ README.md
-└─ uv.lock
-
+├─ uv.lock
+└─ README.md
