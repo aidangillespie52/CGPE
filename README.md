@@ -15,11 +15,6 @@ It scrapes public market data, normalizes it into a stable schema, computes expe
 - Computes expected value and profitability metrics
 - Surfaces profitable cards via search and ranking views
 
-**What it does *not* do (by design):**
-- Place trades
-- Auto-buy or auto-sell cards
-- Circumvent site protections
-
 ---
 
 ## Key Features
