@@ -40,4 +40,4 @@ def backoff_seconds(attempt: int, *, base: float = 1.0, cap: float = 60.0) -> fl
 
 
 # Global shared limiter (import this everywhere you do HTTP)
-RATE_LIMITER = RateLimiter(rps=15, jitter_s=1)
+RATE_LIMITER = RateLimiter(rps=10, jitter_s=1)
