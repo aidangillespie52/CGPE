@@ -16,9 +16,18 @@ log = setup_logger(__name__)
 
 VGPC_POP_RE = re.compile(r"VGPC\.pop_data\s*=\s*(\{.*?\})\s*;", re.DOTALL)
 
+TCG_LINK = "https://www.tcgplayer.com/product/"
+
 _PARSE_ONLY = SoupStrainer(
-    name="div",
-    id=["full-prices", "price_comparison", "full_details", "product_details"]
+    name=["div", "h1"],
+    id=[
+        "full-prices",
+        "price_comparison",
+        "full_details",
+        "product_details",
+        "product_name",
+        "js-tcg-id-link",
+    ],
 )
 
 # -----------------------------
@@ -67,7 +76,7 @@ def enrich_detail(
 
 
 # -----------------------------
-# Normalization helpers
+# helper functions
 # -----------------------------
 
 def clean_price_text(text: str) -> str:
@@ -177,7 +186,10 @@ def extract_card_name(soup: BeautifulSoup) -> str:
     h2 = div.find("h2")
     if not h2:
         raise ValueError("Could not find card name inside div#full_details h2")
-    return clean_name(h2.get_text(strip=True))
+    
+    cleaned_name = clean_name(h2.get_text(strip=True))
+
+    return re.split(r"\s*(?:\[|#|\()", cleaned_name, maxsplit=1)[0].strip()
 
 def extract_card_num(soup: BeautifulSoup) -> str:
     td = soup.find("td", attrs={"itemprop": "model-number"})
@@ -189,6 +201,30 @@ def extract_img_link(soup: BeautifulSoup) -> str:
     if not img:
         raise ValueError("Could not find image inside div#product_details")
     return img["src"]
+
+def extract_tcg_id(soup: BeautifulSoup) -> Optional[str]:
+    a = soup.find("a", id="js-tcg-id-link")
+    if not a:
+        return None
+    
+    return a.text.strip()
+
+def extract_set_link(soup: BeautifulSoup) -> Optional[str]:
+    h1 = soup.find("h1", id="product_name")
+    if not h1:
+        return None
+    
+    return h1.find("a")["href"] if h1.find("a") else None
+
+def extract_variant(soup: BeautifulSoup) -> Optional[str]:
+    h1 = soup.find("h1", id="product_name")
+    if not h1:
+        return None
+    
+    text = "".join(h1.find_all(string=True, recursive=False)).strip()
+    m = re.search(r"\[([^\]]+)\]", text)
+
+    return m.group(1).lower() if m else None
 
 # -----------------------------
 # Composition
@@ -214,7 +250,10 @@ def parse_detail_page(html: str, card_link: str, source_config: SourceConfig) ->
     card_img_link = extract_img_link(soup)
     ungraded_price = graded_prices_by_grade.get("ungraded")
     ev, profit = enrich_detail(pop, graded_prices_by_grade, ungraded_price)
-
+    tcg_id = extract_tcg_id(soup)
+    set_link = extract_set_link(soup)
+    variant = extract_variant(soup)
+    
     detail = Detail(
         card_link=card_link,
         card_name=extract_card_name(soup),
@@ -231,6 +270,9 @@ def parse_detail_page(html: str, card_link: str, source_config: SourceConfig) ->
         card_img_link=card_img_link,
         expected_value=ev,
         expected_profit=profit,
+        tcg_id=tcg_id,
+        set_link=set_link,
+        variant=variant
     )
 
     log.info("Parsed detail for card %r (link: %s)", detail.card_name, detail.card_link)

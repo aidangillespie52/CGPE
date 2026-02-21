@@ -1,16 +1,18 @@
 # cgpe/models/detail.py  (only the parts you need to change)
 
-from dataclasses import dataclass
-from typing import Any, Dict, Optional, Tuple, List
+from dataclasses import dataclass, field
+from typing import Any, Dict, Optional, Tuple, List, ClassVar
 
 from cgpe.utils.json import safe_dumps, safe_loads
 from cgpe.utils.time import utc_now_iso
-
 
 @dataclass
 class Detail:
     card_link: str
     source: Optional[str] = None
+    tcg_id: Optional[str] = None
+    set_link: Optional[str] = None
+    variant: Optional[str] = None
 
     card_name: str = ""
     card_num: str = ""
@@ -32,12 +34,17 @@ class Detail:
 
     scraped_at: Optional[str] = None
 
-    TABLE = "card_details"
-    KEY_COLUMNS = ("card_link", "source")
-    COLUMNS = (
+    # --- table metadata ---
+    TABLE: ClassVar[str] = "card_details"
+    KEY_COLUMNS: ClassVar[tuple[str, ...]] = ("card_link", "source")
+
+    COLUMNS: ClassVar[tuple[str, ...]] = (
         "card_link",
+        "tcg_id",
+        "set_link",
         "card_name",
         "card_num",
+        "variant",
         "source",
         "card_img_link",
         "ungraded_price",
@@ -57,6 +64,42 @@ class Detail:
         "scraped_at",
     )
 
+    DDL_COLUMNS: ClassVar[Dict[str, str]] = {
+        "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+        "card_link": "TEXT NOT NULL",
+        "set_link": "TEXT",
+        "tcg_id": "TEXT",
+        "variant": "TEXT",
+        "card_name": "TEXT NOT NULL",
+        "card_num": "TEXT NOT NULL",
+        "source": "TEXT",
+        "card_img_link": "TEXT",
+        "ungraded_price": "REAL",
+        "grade7_mean": "REAL",
+        "grade7_std": "REAL",
+        "grade8_mean": "REAL",
+        "grade8_std": "REAL",
+        "grade9_mean": "REAL",
+        "grade9_std": "REAL",
+        "grade10_mean": "REAL",
+        "grade10_std": "REAL",
+        "pop_json": "TEXT",
+        "graded_prices_json": "TEXT NOT NULL",
+        "grades_1_to_10_json": "TEXT NOT NULL",
+        "expected_value": "REAL",
+        "expected_profit": "REAL",
+        "scraped_at": "TEXT NOT NULL",
+    }
+
+    UNIQUE_CONSTRAINTS: ClassVar[list[tuple[str, ...]]] = [
+        ("card_link", "source"),
+    ]
+
+    INDEXES: ClassVar[list[tuple[str, tuple[str, ...]]]] = [
+        ("idx_card_details_source_num", ("source", "card_num")),
+        ("idx_card_details_scraped_at", ("scraped_at",)),
+    ]
+
     def __post_init__(self) -> None:
         if self.graded_prices_by_grade is None:
             self.graded_prices_by_grade = {}
@@ -66,8 +109,11 @@ class Detail:
     def to_db_row(self) -> Dict[str, Any]:
         return {
             "card_link": self.card_link,
+            "tcg_id": self.tcg_id,
+            "set_link": self.set_link,
             "card_name": self.card_name,
             "card_num": self.card_num,
+            "variant": self.variant,
             "source": self.source,
             "card_img_link": self.card_img_link,
             "ungraded_price": self.ungraded_price,
@@ -91,8 +137,11 @@ class Detail:
     def from_db_row(cls, r: Dict[str, Any]) -> "Detail":
         return cls(
             card_link=r["card_link"],
+            tcg_id=r.get("tcg_id"),
+            set_link=r.get("set_link"),
             card_name=r.get("card_name", "") or "",
             card_num=r.get("card_num", "") or "",
+            variant=r.get("variant"),
             source=r.get("source"),
             card_img_link=r.get("card_img_link"),
             ungraded_price=r.get("ungraded_price"),

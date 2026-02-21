@@ -2,7 +2,80 @@
 
 import sqlite3
 from pathlib import Path
+from typing import Iterable, Type
 
+
+def _table_exists(conn: sqlite3.Connection, table: str) -> bool:
+    row = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?;",
+        (table,),
+    ).fetchone()
+    return row is not None
+
+
+def _existing_columns(conn: sqlite3.Connection, table: str) -> set[str]:
+    rows = conn.execute(f"PRAGMA table_info({table});").fetchall()
+    return {r["name"] for r in rows}
+
+
+def _create_table_sql(model: Type) -> str:
+    col_defs = ",\n            ".join(
+        f"{name} {ddl}" for name, ddl in model.DDL_COLUMNS.items()
+    )
+
+    unique_defs = []
+    for cols in getattr(model, "UNIQUE_CONSTRAINTS", []) or []:
+        unique_defs.append(f"UNIQUE({', '.join(cols)})")
+
+    uniques = ""
+    if unique_defs:
+        uniques = ",\n            " + ",\n            ".join(unique_defs)
+
+    return f"""
+        CREATE TABLE IF NOT EXISTS {model.TABLE} (
+            {col_defs}
+            {uniques}
+        );
+    """.strip()
+
+
+def _ensure_indexes(conn: sqlite3.Connection, model: Type) -> None:
+    for name, cols in getattr(model, "INDEXES", []) or []:
+        cols_sql = ", ".join(cols)
+        conn.execute(f"CREATE INDEX IF NOT EXISTS {name} ON {model.TABLE}({cols_sql});")
+
+
+def sync_schema(conn: sqlite3.Connection, models: Iterable[Type]) -> None:
+    """
+    Forward-only schema sync:
+      - create missing tables
+      - add missing columns
+      - create missing indexes
+    Never drops/renames columns automatically.
+    """
+    with conn:
+        for m in models:
+            if not hasattr(m, "TABLE") or not hasattr(m, "DDL_COLUMNS"):
+                raise ValueError(f"Model {m} missing TABLE / DDL_COLUMNS")
+
+            if not _table_exists(conn, m.TABLE):
+                conn.executescript(_create_table_sql(m))
+                _ensure_indexes(conn, m)
+                continue
+
+            existing = _existing_columns(conn, m.TABLE)
+
+            for col, ddl in m.DDL_COLUMNS.items():
+                if col in existing:
+                    continue
+
+                # SQLite limitations: can't add PK via ALTER TABLE
+                if "PRIMARY KEY" in ddl.upper():
+                    raise ValueError(f"Cannot ALTER ADD PRIMARY KEY column: {m.TABLE}.{col}")
+
+                conn.execute(f"ALTER TABLE {m.TABLE} ADD COLUMN {col} {ddl};")
+
+            _ensure_indexes(conn, m)
 
 def connect_sqlite(db_path: str | Path) -> sqlite3.Connection:
     db_path = Path(db_path)
@@ -16,44 +89,3 @@ def connect_sqlite(db_path: str | Path) -> sqlite3.Connection:
     conn.execute("PRAGMA busy_timeout=5000;")
 
     return conn
-
-
-def init_schema(conn: sqlite3.Connection) -> None:
-    conn.executescript(
-        """
-        CREATE TABLE IF NOT EXISTS card_details (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-            card_link TEXT NOT NULL,
-            card_name TEXT NOT NULL,
-            card_num  TEXT NOT NULL,
-            source    TEXT,
-            card_img_link TEXT,
-
-            ungraded_price REAL,
-
-            grade7_mean  REAL, grade7_std  REAL,
-            grade8_mean  REAL, grade8_std  REAL,
-            grade9_mean  REAL, grade9_std  REAL,
-            grade10_mean REAL, grade10_std REAL,
-
-            pop_json             TEXT,
-            graded_prices_json   TEXT NOT NULL,
-            grades_1_to_10_json  TEXT NOT NULL,
-
-            expected_value  REAL,
-            expected_profit REAL,
-
-            scraped_at TEXT NOT NULL,
-
-            UNIQUE(card_link, source)
-        );
-
-        CREATE INDEX IF NOT EXISTS idx_card_details_source_num
-            ON card_details(source, card_num);
-
-        CREATE INDEX IF NOT EXISTS idx_card_details_scraped_at
-            ON card_details(scraped_at);
-        """
-    )
-    conn.commit()
