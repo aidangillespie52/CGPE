@@ -3,6 +3,7 @@
 import re
 from typing import Any, Optional
 from rapidfuzz import fuzz
+import sqlite3
 
 from cgpe.storage.sqlite_db import connect_sqlite
 
@@ -27,15 +28,13 @@ def _strip_num(q: str) -> str:
 
 def search_card_details(
     *,
-    db_path: str = "data/cgpe.sqlite3",
+    conn: sqlite3.Connection,
     q: str,
     source: Optional[str] = None,
     limit: int = 25,
     candidate_limit: int = 250,
 ) -> list[dict[str, Any]]:
-    """
-    Fuzzy search over card_name + card_num for the web UI.
-    """
+    
     q_raw = q or ""
     q_num = _extract_num(q_raw)
     q_text = _strip_num(q_raw)
@@ -73,7 +72,6 @@ def search_card_details(
         LIMIT ?
     """
 
-    conn = connect_sqlite(db_path)
     rows = conn.execute(sql, [*params, candidate_limit]).fetchall()
 
     scored: list[tuple[float, dict[str, Any]]] = []
