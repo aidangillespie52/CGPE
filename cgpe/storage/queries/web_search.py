@@ -4,9 +4,11 @@ import re
 from typing import Any, Optional
 from rapidfuzz import fuzz
 import sqlite3
+import logging
 
-from cgpe.storage.sqlite_db import connect_sqlite
+from cgpe.logging.logger import setup_logger
 
+log = setup_logger(__name__)
 
 _NUM_RE = re.compile(r"(?i)\b#?\s*([a-z]{0,4}\s*\d{1,4}(?:\s*/\s*\d{1,4})?)\b")
 
@@ -74,6 +76,8 @@ def search_card_details(
 
     rows = conn.execute(sql, [*params, candidate_limit]).fetchall()
 
+    log.info("Found %d candidates for query '%s'", len(rows), q_raw)
+
     scored: list[tuple[float, dict[str, Any]]] = []
     for r in rows:
         name = _norm(r["card_name"])
@@ -88,6 +92,15 @@ def search_card_details(
             score = num_score
         else:
             score = name_score
+
+        log.debug(
+            "Candidate: '%s' (num: '%s') - name_score: %.1f, num_score: %.1f, combined_score: %.1f",
+            r["card_name"],
+            r["card_num"],
+            name_score,
+            num_score,
+            score,
+        )
 
         scored.append((score, dict(r)))
 
