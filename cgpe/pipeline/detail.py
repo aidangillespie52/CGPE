@@ -6,7 +6,7 @@ from typing import List, Sequence, Union, overload
 import aiohttp
 
 from cgpe.http.client import fetch_html
-from cgpe.scrape.detail.parse_detail import Detail, parse_detail_page
+from cgpe.scrape.pricecharting.detail.parse_detail import Detail, parse_detail_page
 from cgpe.scrape.sources.base import SourceConfig
 from cgpe.logging.logger import setup_logger
 

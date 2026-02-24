@@ -6,8 +6,8 @@ from typing import List, Sequence, Union, overload
 import aiohttp
 
 from cgpe.scrape.sources.base import SourceConfig
-from cgpe.scrape.set.fetch_set import fetch_set_json_pages
-from cgpe.scrape.set.parse_set import parse_set_data, SetPage
+from cgpe.scrape.pricecharting.set.fetch_set import fetch_set_json_pages
+from cgpe.scrape.pricecharting.set.parse_set import parse_set_data, SetPage
 
 @overload
 async def run_set_pipeline(

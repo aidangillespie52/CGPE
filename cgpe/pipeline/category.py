@@ -6,7 +6,7 @@ import aiohttp
 from typing import Iterable, List, Union, overload
 
 from cgpe.scrape.sources.base import SourceConfig
-from cgpe.scrape.category.parse_category import parse_category_page, CategoryPage
+from cgpe.scrape.pricecharting.category.parse_category import parse_category_page, CategoryPage
 from cgpe.http.client import fetch_html
 from cgpe.logging.logger import setup_logger
 

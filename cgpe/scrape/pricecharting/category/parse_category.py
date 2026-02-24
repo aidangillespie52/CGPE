@@ -1,4 +1,4 @@
-# cgpe/scrape/set/parse_set.py
+# cgpe/scrape/pricecharting/category/parse_category.py
 
 from __future__ import annotations
 

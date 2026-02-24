@@ -1,4 +1,4 @@
-# cgpe/scrape/set/parse_set.py
+# cgpe/scrape/pricecharting/set/parse_set.py
 
 from typing import List
 from bs4 import BeautifulSoup

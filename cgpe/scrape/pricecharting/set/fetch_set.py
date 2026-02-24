@@ -1,4 +1,4 @@
-# cgpe/scrape/set/fetch_set.py
+# cgpe/scrape/pricecharting/set/fetch_set.py
 
 from typing import Any, Dict, List
 from urllib.parse import urlencode

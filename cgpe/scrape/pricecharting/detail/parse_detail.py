@@ -1,4 +1,4 @@
-# cgpe/scrape/detail/parse_detail.py
+# cgpe/scrape/pricecharting/detail/parse_detail.py
 
 from typing import Optional, Dict, List, Tuple
 import json
