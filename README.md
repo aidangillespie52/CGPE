@@ -56,7 +56,6 @@ CGPE/
 │     ├─ services/           # web-facing service logic
 │     ├─ templates/          # Jinja templates
 │     └─ static/             # CSS / assets
-├─ arbitrage/                # experimental arbitrage research
 ├─ data/                     # SQLite database
 ├─ logs/                     # rotating logs
 ├─ downloaded_files/         # transient runtime artifacts
