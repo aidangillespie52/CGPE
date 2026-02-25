@@ -5,7 +5,9 @@ from dataclasses import dataclass
 from typing import Callable
 import time
 from seleniumbase import SB
+from cgpe.logging.logger import setup_logger
 
+log = setup_logger(__name__)
 
 @dataclass(frozen=True)
 class SessionData:
@@ -60,6 +62,8 @@ class SessionPool:
         delay_s: float = 2.0,
     ) -> SessionData:
 
+        log.debug(f"Refreshing session for key: {key}")
+
         entry = self._pool[key]
         last_exc: Exception | None = None
 
@@ -67,8 +71,10 @@ class SessionPool:
             try:
                 data = self._bootstrapper(entry.link)
                 entry.data = data
+                log.debug(f"Successfully refreshed session for key '{key}' on attempt {attempt}")
                 return data
             except Exception as e:
+                log.warning(f"Attempt {attempt} to refresh session for key '{key}' failed: {e}")
                 last_exc = e
                 if attempt <= retries:
                     time.sleep(delay_s)
