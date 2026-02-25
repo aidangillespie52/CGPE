@@ -49,7 +49,6 @@ async def _fetch(
     timeout_s: int = 30,
     retries: int = 6,
 ) -> str:
-    """Core fetch logic shared by fetch_html and fetch_json_post."""
     timeout = aiohttp.ClientTimeout(total=timeout_s)
     headers = headers or {}
 
@@ -61,47 +60,64 @@ async def _fetch(
         kwargs["json"] = payload
 
     for attempt in range(retries + 1):
-        try:
-            await RATE_LIMITER.wait()
-            resp = await session.request(method, url, **kwargs).__aenter__()
-        except asyncio.TimeoutError:
-            if attempt < retries:
-                wait_s = backoff_seconds(attempt)
-                log.warning("Timeout while fetching %s; retrying in %.2fs (attempt=%d/%d)", url, wait_s, attempt, retries)
-                await asyncio.sleep(wait_s)
-                continue
-            log.warning("Timeout while fetching %s (giving up)", url)
-            raise
-        except Exception:
-            log.exception("Unexpected error while fetching %s", url)
-            raise
+        await RATE_LIMITER.wait()
 
         try:
-            if resp.status == 429:
-                await _backoff(attempt, resp)
-                continue
+            async with session.request(method, url, **kwargs) as resp:
+                if resp.status == 429:
+                    await _backoff(attempt, resp)
+                    continue
 
-            if resp.status in (500, 502, 503, 504):
-                wait_s = backoff_seconds(attempt)
-                log.warning("Server error %d for %s; retrying in %.2fs (attempt=%d)", resp.status, url, wait_s, attempt)
-                await asyncio.sleep(wait_s)
-                continue
+                if resp.status in (500, 502, 503, 504):
+                    wait_s = backoff_seconds(attempt)
+                    log.warning(
+                        "Server error %d for %s; retrying in %.2fs (attempt=%d)",
+                        resp.status, url, wait_s, attempt
+                    )
+                    await asyncio.sleep(wait_s)
+                    continue
 
-            resp.raise_for_status()
-            text = await resp.text()
+                resp.raise_for_status()
+                text = await resp.text()
+
+                log.debug(
+                    "Fetched %d characters from %s (status=%d, method=%s)",
+                    len(text), url, resp.status, method
+                )
+                return text
+
+        except RuntimeError as e:
+            # This is your "Session is closed"
+            log.error("Session error while fetching %s: %s", url, e)
+            raise
+
         except aiohttp.ClientResponseError as e:
             if e.status in _RETRYABLE_STATUSES and attempt < retries:
                 wait_s = backoff_seconds(attempt)
-                log.warning("HTTP error %s for %s; retrying in %.2fs (attempt=%d/%d)", e.status, url, wait_s, attempt, retries)
+                log.warning(
+                    "HTTP error %s for %s; retrying in %.2fs (attempt=%d/%d)",
+                    e.status, url, wait_s, attempt, retries
+                )
                 await asyncio.sleep(wait_s)
                 continue
             log.warning("HTTP error %s for %s", e.status, url)
             raise
-        finally:
-            await resp.__aexit__(None, None, None)
 
-        log.debug("Fetched %d characters from %s (status=%d, method=%s)", len(text), url, resp.status, method)
-        return text
+        except asyncio.TimeoutError:
+            if attempt < retries:
+                wait_s = backoff_seconds(attempt)
+                log.warning(
+                    "Timeout while fetching %s; retrying in %.2fs (attempt=%d/%d)",
+                    url, wait_s, attempt, retries
+                )
+                await asyncio.sleep(wait_s)
+                continue
+            log.warning("Timeout while fetching %s (giving up)", url)
+            raise
+
+        except Exception:
+            log.exception("Unexpected error while fetching %s", url)
+            raise
 
     raise RuntimeError(f"Failed to fetch after {retries} retries: {url}")
 
