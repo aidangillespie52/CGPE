@@ -63,3 +63,4 @@ CGPE/
 ├─ pyproject.toml
 ├─ uv.lock
 └─ README.md
+```
